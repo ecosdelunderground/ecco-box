@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ECCO Box</title>
+<meta name="description" content="Clases guiadas de calentamiento y cardio boxing en casa, con calendario que rota los ejercicios.">
+<meta name="theme-color" content="#111513">
+<meta name="color-scheme" content="dark">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<!-- iPhone: a pantalla completa al abrirla desde el icono de inicio -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ECCO Box">
+<meta name="format-detection" content="telephone=no">
+<!-- Fuentes incluidas en la app (funcionan sin conexión y sin pedir nada a terceros) -->
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <span class="mark" aria-hidden="true">
+      <svg viewBox="0 0 40 40"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a8e8b8"/><stop offset=".2" stop-color="#a8e8b8"/><stop offset=".2" stop-color="#62d692"/><stop offset=".4" stop-color="#62d692"/><stop offset=".4" stop-color="#05b86e"/><stop offset=".6" stop-color="#05b86e"/><stop offset=".6" stop-color="#039a5e"/><stop offset=".8" stop-color="#039a5e"/><stop offset=".8" stop-color="#00794a"/><stop offset="1" stop-color="#00794a"/></linearGradient></defs><circle cx="20" cy="20" r="14" fill="none" stroke="url(#g)" stroke-width="7"/></svg>
+    </span>
+    <div><h1>ECCO <span class="h1-accent">Box</span></h1><span class="sub">Cardio boxing en casa</span></div>
+    <button class="streak-pill" id="streak-pill" data-act="go-hoy"></button>
+    <button class="profile-btn" id="profile-btn" data-act="profiles"></button>
+  </div>
+</header>
+<main id="main"></main>
+<nav class="tabs" aria-label="Secciones">
+  <button data-tab="hoy"><span class="ico"></span><span>Hoy</span></button>
+  <button data-tab="cal"><span class="ico"></span><span>Calendario</span></button>
+  <button data-tab="ajustes"><span class="ico"></span><span>Ajustes</span></button>
+</nav>
+<section id="player" hidden aria-label="Clase en curso" role="region">
+  <div class="stage"></div>
+  <div class="controls">
+    <button class="btn icon" data-pact="prev" aria-label="Ejercicio anterior"></button>
+    <button class="btn primary play" id="pplay" data-pact="play"></button>
+    <button class="btn icon" data-pact="next" aria-label="Ejercicio siguiente"></button>
+  </div>
+</section>
+<section id="sheet" class="overlay" hidden></section>
+<div id="toast" role="status" hidden></div>
+<div id="live" class="sr-only" aria-live="polite"></div>
+<script src="data.js"></script>
+<script src="planner.js"></script>
+<script src="pictos.js"></script>
+<script src="sounds.js"></script>
+<script src="player.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
