@@ -405,6 +405,11 @@ body.playing { overflow: hidden; }
 .ex { margin: 0; font: 800 clamp(26px, 7.4vw, 42px)/1.04 var(--f-text); letter-spacing: -.005em; overflow-wrap: anywhere; }
 .cue { color: var(--text-2); font-size: var(--t-m); line-height: 1.45; }
 .cue b { color: var(--text); font-weight: 600; }
+/* Antes de la clase: ¿hoy con saco? */
+.bag-choice { display: grid; gap: var(--sp-2); }
+.bag-opts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+.bag-opt { justify-content: center; min-height: 52px; font-size: 13px; font-weight: 700; }
+.bag-opt.on { border-color: var(--green); background: color-mix(in srgb, var(--green) 14%, var(--s2)); color: var(--text); }
 /* Fuerza: repeticiones en grande y peso sugerido */
 .time.reps { font-size: clamp(52px, 16vw, 92px); letter-spacing: -.02em; }
 .rx-unit { font: 600 12px var(--f-text); letter-spacing: var(--track); text-transform: uppercase; color: var(--text-2); margin-top: -4px; }

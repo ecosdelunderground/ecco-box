@@ -552,14 +552,25 @@ function openPreClass(key) {
   const steps = state.plan[key].steps;
   const cur = curRhythm();
   const opt = (v, c, label) => `<option value="${v}"${v === c ? ' selected' : ''}>${label}</option>`;
+  const day = state.plan[key];
+  const withBag = Planner.bagToday(day, state.settings);
+  const boxing = state.settings.mode === 'boxeo';
+  const bagHelp = boxing
+    ? (withBag ? 'Asaltos de saco con guantes.' : 'Sin saco: los asaltos se hacen de sombra intensa, con el mismo tiempo.')
+    : (withBag ? 'Media clase de fuerza y media de saco.' : 'Solo fuerza, por series.');
+  const choice = (v, label) => `<button class="chip-btn bag-opt${v === withBag ? ' on' : ''}" role="radio" aria-checked="${v === withBag}" data-act="pick-bag" data-v="${v ? 1 : 0}">${label}</button>`;
   openSheet(`<div class="sheet-head"><h2 class="section-title" id="pre-title">¿Qué clase te apetece?</h2>
       <button class="btn icon" data-act="profiles-close" aria-label="Cerrar">${ICONS.close}</button></div>
-    <p class="lead">${dayTitle(key)} · ${esc(themeOf(state.plan[key]).n)}. Los ejercicios son los mismos; el ritmo cambia cuánto aprieta y cuánto dura.</p>
+    <p class="lead">${dayTitle(key)} · ${esc(themeOf(day).n)}.</p>
+    <div class="bag-choice"><p class="eyebrow">¿Hoy con saco?</p>
+      <div class="bag-opts" role="radiogroup" aria-label="¿Hoy con saco?">${choice(true, 'Con saco')}${choice(false, 'Sin saco')}</div>
+      <p class="f-help">${bagHelp} ${estMin(steps)} min aprox.</p></div>
+    ${hasBag(steps) ? `<p class="f-help">Ritmo: los ejercicios son los mismos; cambia cuánto aprieta y cuánto dura el saco.</p>
     <div class="rhythms" role="radiogroup" aria-label="Ritmo de la clase">${Object.entries(Planner.RHYTHMS).map(([k, r]) => {
       const min = Math.round(totalSecs(Planner.withRhythm(steps, k)) / 60);
       return `<button class="rhythm ${k}${k === cur ? ' on' : ''}" role="radio" aria-checked="${k === cur}" data-act="pick-rhythm" data-r="${k}">
         <span class="rcheck">${ICONS.check}</span><span class="rname"><span class="dot"></span>${r.n}</span><span class="rmin">${min}<small>MIN</small></span><span class="rdesc">${r.desc}</span></button>`;
-    }).join('')}</div>
+    }).join('')}</div>` : ''}
     <div class="level-box">
       <label class="field"><span>Dificultad<span class="f-help">Es del perfil: también ajusta las próximas clases</span></span><select id="pre-level">${Object.entries(LEVELS).map(([k, l]) => opt(k, state.settings.level, l.n)).join('')}</select></label>
     </div>
@@ -761,7 +772,6 @@ function importData(file) {
 function startClass(key, fromStart = false) {
   const s = state.session;
   if (!fromStart && s && s.key === key) launchClass(key, s.rhythm || 'normal', s.idx, s.remaining);
-  else if (!hasBag(state.plan[key].steps)) { state.session = null; save(); launchClass(key, 'normal'); } // fuerza: sin ritmo que elegir
   else openPreClass(key);
 }
 const hasBag = steps => steps.some(st => st.block === 'Saco' || st.block === 'Sombra intensa');
@@ -798,6 +808,16 @@ document.addEventListener('click', e => {
       moveFrom = null; selectedDay = to;
       const d = fromKey(to); calMonth = new Date(d.getFullYear(), d.getMonth(), 1);
       save(); render(); toast(`Clase pasada al ${dayTitle(to)}.`); break;
+    }
+    case 'pick-bag': {
+      // Rehace la clase del día con o sin saco (mismo tema y mismo grupo de fuerza).
+      const day = state.plan[preKey];
+      if (!day || day.done) break;
+      day.bagChoice = btn.dataset.v === '1';
+      Planner.generateDay(state.plan, preKey, state.settings, { keepTheme: true });
+      if (state.session && state.session.key === preKey) state.session = null;
+      save(); render(); openPreClass(preKey);
+      break;
     }
     case 'pick-rhythm':
       state.settings.rhythm = btn.dataset.r; save();

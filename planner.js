@@ -193,6 +193,19 @@
     return Object.keys(plan).filter(k => k < key && plan[k].steps).sort().slice(-n).map(k => plan[k]);
   }
 
+  // Ajustes con la elección del día. Perfiles de fuerza: con saco = clase mixta, sin saco = solo fuerza.
+  // Perfiles de boxeo: sin saco = los asaltos de saco pasan a sombra intensa.
+  function withBagChoice(s, choice) {
+    if (choice === null || choice === undefined) return s;
+    if (modeOf(s) === 'boxeo') return { ...s, bag: choice };
+    return { ...s, mode: choice ? 'mixto' : 'fuerza', bag: true };
+  }
+  // ¿Lleva saco hoy, según el perfil y la elección del día?
+  const bagToday = (day, s) => {
+    const eff = withBagChoice(s, day && typeof day.bagChoice === 'boolean' ? day.bagChoice : null);
+    return modeOf(eff) === 'boxeo' ? Boolean(eff.bag) : modeOf(eff) === 'mixto';
+  };
+
   // Crea (o rehace) la sesión de un día. keepTheme conserva el tema al pedir "cambiar ejercicios".
   function generateDay(plan, key, settings, { keepTheme = false, rng = Math.random } = {}) {
     const prev = previousSessions(plan, key, 2);
@@ -201,7 +214,10 @@
       if (st.id) recent.set(st.id, Math.max(recent.get(st.id) || 0, prev.length === 1 ? 2 : i + 1));
     }));
     const old = plan[key] || {};
-    const mode = modeOf(settings);
+    // Elección del día "con saco / sin saco" (se pregunta antes de cada clase y se respeta al rehacerla).
+    const choice = typeof old.bagChoice === 'boolean' ? old.bagChoice : null;
+    const eff = withBagChoice(settings, choice);
+    const mode = modeOf(eff);
     // Tema de boxeo: el siguiente al de la última clase que tuvo uno.
     const lastBox = prev.slice().reverse().find(p => D.THEMES.some(t => t.id === p.theme));
     let themeIdx = lastBox ? (D.THEMES.findIndex(t => t.id === lastBox.theme) + 1) % D.THEMES.length : 0;
@@ -214,11 +230,11 @@
     if (keepTheme && days.some(d => d.id === old.split)) splitIdx = days.findIndex(d => d.id === old.split);
     const day = days[splitIdx];
     let made;
-    if (mode === 'fuerza') made = { theme: day.id, split: day.id, steps: buildStrength(day, recent, settings, rng) };
-    else if (mode === 'mixto') made = { theme: theme.id, split: day.id, steps: buildMixed(theme, day, recent, settings, rng) };
-    else made = { theme: theme.id, steps: buildSession(theme, recent, settings, rng) };
+    if (mode === 'fuerza') made = { theme: day.id, split: day.id, steps: buildStrength(day, recent, eff, rng) };
+    else if (mode === 'mixto') made = { theme: theme.id, split: day.id, steps: buildMixed(theme, day, recent, eff, rng) };
+    else made = { theme: theme.id, steps: buildSession(theme, recent, eff, rng) };
     plan[key] = {
-      ...made, done: false, sig: settingsSig(settings),
+      ...made, done: false, sig: settingsSig(settings), ...(choice !== null ? { bagChoice: choice } : {}),
       ...(old.extra ? { extra: true } : {}), ...(old.movedFrom ? { movedFrom: old.movedFrom } : {}),
     };
     return plan[key];
@@ -276,7 +292,7 @@
   // El bloque de saco nunca baja de 30 minutos.
   const BAG_MIN_SECS = 30 * 60;
   const RHYTHMS = {
-    light: { n: 'Light', desc: 'Más descanso entre asaltos y saco de 30 min', restDelta: 30, bagDelta: 0, minOnly: true },
+    light: { n: 'Light', desc: 'Más descanso entre asaltos y el saco al mínimo', restDelta: 30, bagDelta: 0, minOnly: true },
     normal: { n: 'Normal', desc: 'La clase tal como está planificada', restDelta: 0, bagDelta: 0 },
     impacto: { n: 'Impacto', desc: 'Un asalto más, menos descanso y ráfaga final', restDelta: -15, bagDelta: 1, burst: true },
   };
@@ -316,7 +332,7 @@
     return blocks.flatMap(b => b.steps);
   }
 
-  const api = { BLOCK_ORDER, STRUCTURE, BAG_MIN_SECS, roundsFor, modeOf, strengthLoad, fitsStrength, pickStrength, buildStrength, buildMixed, strengthPlan, orderBlocks, toKey, fromKey, addDays, shuffle, buildSession, generateDay, ensurePlan, isTrainingDay, settingsSig, totalSecs, previousSessions, isFree, freeDays, moveSession, RHYTHMS, withRhythm };
+  const api = { withBagChoice, bagToday, BLOCK_ORDER, STRUCTURE, BAG_MIN_SECS, roundsFor, modeOf, strengthLoad, fitsStrength, pickStrength, buildStrength, buildMixed, strengthPlan, orderBlocks, toKey, fromKey, addDays, shuffle, buildSession, generateDay, ensurePlan, isTrainingDay, settingsSig, totalSecs, previousSessions, isFree, freeDays, moveSession, RHYTHMS, withRhythm };
   if (typeof module !== 'undefined') module.exports = api;
   else root.Planner = api;
 })(typeof self !== 'undefined' ? self : this);
