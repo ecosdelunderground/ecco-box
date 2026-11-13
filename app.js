@@ -38,7 +38,7 @@ const STORE_KEY = 'ecco-box';
 const SCHEMA = 2; // esquema de los datos de cada perfil
 const DEFAULT_SETTINGS = {
   duration: 45, round: 120, rest: 60, bag: true, level: 'intermedio',
-  days: [1, 2, 4, 5, 6], voice: true, sound: true, vibrate: true, rhythm: 'normal', voiceName: '',
+  days: [1, 2, 4, 5, 6], voice: true, sound: true, vibrate: true, rhythm: 'normal', voiceName: '', anim3d: true,
   // Tipo de entreno y material (fuerza y mixto)
   mode: 'boxeo', plan: 'torso4', lumbar: false, bench: false, dumbbells: [], kettlebells: [],
 };
@@ -73,7 +73,7 @@ function normalize(s) {
   set.voiceName = typeof set.voiceName === 'string' ? set.voiceName.slice(0, 120) : '';
   if (!MODES[set.mode]) set.mode = 'boxeo';
   if (!STRENGTH_PLANS[set.plan]) set.plan = 'torso4';
-  set.lumbar = Boolean(set.lumbar); set.bench = Boolean(set.bench);
+  set.lumbar = Boolean(set.lumbar); set.bench = Boolean(set.bench); set.anim3d = set.anim3d !== false;
   set.dumbbells = parseKg(set.dumbbells); set.kettlebells = parseKg(set.kettlebells);
   return st;
 }
@@ -367,7 +367,7 @@ function sessionDetailHTML(key) {
       ${!day.done && !missed ? `<button class="btn secondary" data-act="move" data-key="${key}">${ICONS.cal}Cambiar de día</button>` : ''}
     </div>
     <div class="blocks">${blocks.map(b => `<details class="block"><summary><span class="b-main"><span class="b-name">${esc(b.name)}</span><span class="b-goal">${esc(b.name === 'Calentamiento' && !b.items.some(i => i.combos) ? 'Movilidad y activación antes de cargar' : BLOCK_GOALS[b.name] || '')}</span></span><span class="b-dur">${Math.round(b.secs / 60)} min</span></summary>
-      <ul>${b.items.map(it => `<li><span class="li-picto">${pictoSVG(it.id, { size: 52, title: it.name })}</span>
+      <ul>${b.items.map(it => `<li><span class="li-picto" data-m3d="${esc(it.id)}">${pictoSVG(it.id, { size: 52, title: it.name })}</span>
         <span class="li-main"><span class="li-top"><span class="li-name">${esc(it.name)}</span><span class="mono">${it.reps > 1 ? `${it.reps} × ` : ''}${it.rx ? esc(it.rx) : fmtTime(it.dur)}</span></span>
         ${it.load ? `<span class="li-load">${esc(it.load)} · descanso ${fmtTime(it.rest)}</span>` : ''}${it.combos ? `<span class="combos">${it.combos.map(c => `<code>${esc(c)}</code>`).join('')}</span>` : `<button class="li-cue" data-act="cue" aria-expanded="false">${esc(it.cue)}</button>`}</span></li>`).join('')}</ul></details>`).join('')}</div>
     <div class="link-row">
@@ -661,6 +661,7 @@ function renderSettings() {
       ${sw('voice', s.voice, 'Voz', 'Dice el ejercicio y las combinaciones')}
       <label class="field"><span>Voz del móvil${nativeVoice ? '<span class="f-help">Usa la voz en español de Android</span>' : voices.length ? '' : '<span class="voice-warn">Este dispositivo no tiene voz en español: sonarán solo los sonidos.</span>'}</span>
         <select name="voiceName"${voices.length && !nativeVoice ? '' : ' disabled'}>${opt('', s.voiceName, 'Automática')}${voices.map(v => opt(v.name, s.voiceName, `${v.name} (${v.lang})`)).join('')}</select></label>
+      ${sw('anim3d', s.anim3d, 'Animaciones 3D', 'Maniquí animado en cada ejercicio, sin conexión. Desactívalo si el móvil va lento')}
       ${sw('vibrate', s.vibrate, 'Vibración', IS_IOS ? 'El iPhone no deja vibrar a las apps web' : 'Solo en Android')}
       <div class="actions"><button type="button" class="btn secondary" data-act="test-alerts">Probar avisos</button></div>
     </section>
@@ -694,6 +695,38 @@ function render() {
     b.setAttribute('aria-current', on ? 'page' : 'false');
   });
   renderStreakPill();
+  if (!Player.root() || Player.root().hidden) Mannequin3D.stop();
+  stills3D(main);
+}
+
+/* ---------- Animaciones 3D (mannequin3d.js) ---------- */
+const use3D = () => state.settings.anim3d !== false && Mannequin3D.isSupported();
+// Cambia los pictogramas de las listas por la imagen 3D, poco a poco para no bloquear la pantalla.
+function stills3D(root) {
+  if (!use3D()) return;
+  const els = [...root.querySelectorAll('[data-m3d]:not(.m3d-done)')];
+  const step = () => {
+    const t = performance.now();
+    while (els.length && performance.now() - t < 12) {
+      const el = els.shift(); el.classList.add('m3d-done');
+      const url = Mannequin3D.still(el.dataset.m3d, { size: 52 });
+      if (url) el.innerHTML = `<img class="m3d-still" src="${url}" width="52" height="52" alt="">`;
+    }
+    if (els.length) setTimeout(step, 16);
+  };
+  setTimeout(step, 0);
+}
+// Al abrir la explicación de un ejercicio, se ve el maniquí 3D en movimiento.
+function toggleAnim(btn, open) {
+  document.querySelectorAll('.li-anim').forEach(a => { if (!open || a.parentNode !== btn.parentNode) a.remove(); });
+  document.querySelectorAll('.li-cue.open').forEach(b => { if (b !== btn) { b.classList.remove('open'); b.setAttribute('aria-expanded', 'false'); } });
+  Mannequin3D.stop();
+  if (!open || !use3D()) return;
+  const li = btn.closest('li'), pic = li && li.querySelector('[data-m3d]');
+  if (!pic) return;
+  const box = document.createElement('div'); box.className = 'li-anim';
+  btn.after(box);
+  if (!Mannequin3D.play(box, pic.dataset.m3d, { label: btn.closest('.li-main').querySelector('.li-name').textContent })) box.remove();
 }
 
 let toastTimer;
@@ -789,7 +822,7 @@ document.addEventListener('click', e => {
   const key = btn.dataset.key;
   switch (btn.dataset.act) {
     case 'start': startClass(key); break;
-    case 'cue': { const open = btn.classList.toggle('open'); btn.setAttribute('aria-expanded', open); break; }
+    case 'cue': { const open = btn.classList.toggle('open'); btn.setAttribute('aria-expanded', open); toggleAnim(btn, open); break; }
     case 'go-hoy': goTab('hoy'); break;
     case 'move': moveFrom = moveFrom === key ? null : key; render(); break;
     case 'move-cancel': moveFrom = null; render(); break;
@@ -887,7 +920,7 @@ document.addEventListener('change', e => {
   const planChanged = ['level', 'duration', 'round', 'rest', 'bag', 'day', 'mode', 'plan', 'bench', 'dumbbells', 'kettlebells', 'lumbar'].includes(e.target.name);
   Object.assign(s, {
     level: f.level.value, duration: Number(f.duration.value), round: Number(f.round.value), rest: Number(f.rest.value),
-    bag: f.bag.checked, voice: f.voice.checked, sound: f.sound.checked, vibrate: f.vibrate.checked, days, voiceName: f.voiceName.value,
+    bag: f.bag.checked, voice: f.voice.checked, sound: f.sound.checked, vibrate: f.vibrate.checked, days, voiceName: f.voiceName.value, anim3d: f.anim3d.checked,
     mode: MODES[f.mode.value] ? f.mode.value : 'boxeo', lumbar: f.lumbar.checked,
     ...(f.plan ? { plan: f.plan.value, bench: f.bench.checked, dumbbells: parseKg(f.dumbbells.value), kettlebells: parseKg(f.kettlebells.value) } : {}),
   });
@@ -935,6 +968,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 Player.init({
+  anim3d: () => use3D(),
   theme: key => themeOf(state.plan[key]),
   onProgress: s => { state.session = { ...s, rhythm: Player.rhythm || 'normal' }; save(); },
   onComplete: key => {

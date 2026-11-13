@@ -1,7 +1,7 @@
 // Service worker: guarda la app para que funcione sin conexión.
 // Estrategia: red primero (así llegan las actualizaciones) y caché si no hay red.
-const CACHE = 'ecco-box-v10';
-const FILES = ['./', 'index.html', 'style.css', 'data.js', 'planner.js', 'pictos.js', 'sounds.js', 'player.js', 'app.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png',
+const CACHE = 'ecco-box-v11';
+const FILES = ['./', 'index.html', 'style.css', 'data.js', 'planner.js', 'pictos.js', 'vendor/three.min.js', 'mannequin3d.js', 'sounds.js', 'player.js', 'app.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png',
   'fonts/fonts.css', 'fonts/Archivo-normal-latin.woff2', 'fonts/Archivo-normal-latin-ext.woff2', 'fonts/Newsreader-normal-latin.woff2', 'fonts/Newsreader-normal-latin-ext.woff2'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener('activate', e => {

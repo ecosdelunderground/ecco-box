@@ -22,7 +22,7 @@ const Player = {
   timer: null, lastSec: null, lastCombo: -1, halfDone: false, wakeLock: null, els: {}, lastTickAt: 0, confirming: false,
   // Fuerza: cuándo acabó la serie anterior (para contar el descanso hacia arriba) y si ya sonó el aviso.
   restFrom: null, restChimed: false,
-  hooks: { theme: () => THEMES[0], onProgress: () => {}, onComplete: () => {}, onClose: () => {}, onRate: () => {}, finishExtra: () => '' },
+  hooks: { anim3d: () => false, theme: () => THEMES[0], onProgress: () => {}, onComplete: () => {}, onClose: () => {}, onRate: () => {}, finishExtra: () => '' },
 
   init(hooks) { Object.assign(this.hooks, hooks); },
   get step() { return this.steps[this.idx]; },
@@ -47,6 +47,7 @@ const Player = {
     this.root().hidden = true;
     document.body.classList.remove('playing');
     this.releaseWake();
+    Mannequin3D.stop();
     Alerts.hush();
     this.hooks.onClose();
   },
@@ -213,6 +214,7 @@ const Player = {
         if (!startOfRound) { Alerts.change(); Alerts.vibrate(80); }
         Alerts.say((startOfRound ? `${speakName(st)}. ` : 'Cambio. ') + comboToSpeech(st.combos[seg]));
         this.renderCombos();
+        this.play3D();
       }
     }
     if (st.burst && st.combos && sec === 20 && this.lastSec !== 20) {
@@ -374,8 +376,24 @@ const Player = {
     };
     document.getElementById('live').textContent = `${st.block}: ${stepLabel(st)}, ${fmtTime(st.dur)}`;
     this.renderCombos();
+    this.play3D();
     this.updateControls();
     this.updateTime();
+  },
+
+  // Maniquí 3D en la tarjeta del ejercicio (o la combinación en el saco). Si no se puede, queda el pictograma.
+  play3D() {
+    const st = this.step, r = this.root();
+    if (!this.hooks.anim3d()) return;
+    if (st.combos) {
+      const box = r.querySelector('#p-m3d');
+      if (box && Mannequin3D.play(box, st.id || 'saco', { combo: st.combos[Math.max(0, this.lastCombo)], label: 'combinación en el saco' })) box.classList.add('on');
+      return;
+    }
+    const isRest = st.kind === 'rest', nx = this.steps[this.idx + 1];
+    const id = isRest ? (nx ? nx.id : 'respira') : st.id;
+    const box = r.querySelector('.ex-picto');
+    if (box && Mannequin3D.play(box, id, { label: isRest && nx ? nx.name : st.name })) box.classList.add('m3d');
   },
 
   renderCombos() {
@@ -388,6 +406,7 @@ const Player = {
     const th = this.hooks.theme(this.key);
     const nextC = st.combos[seg + 1];
     this.els.combos.innerHTML = `<div class="combo-now">
+        <div class="combo-3d" id="p-m3d" aria-hidden="true"></div>
         <div class="combo-head"><span class="eyebrow">Combinación actual</span><span class="combo-dots" aria-label="Combinación ${seg + 1} de ${st.combos.length}">${st.combos.map((_, i) => `<i class="${i === seg ? 'on' : i < seg ? 'past' : ''}"></i>`).join('')}</span></div>
         <div class="combo${simple && c.length <= 9 ? '' : ' long'}" aria-label="${esc(c)}">${big}</div>
         <div class="combo-words">${esc(comboToText(c))}</div>
